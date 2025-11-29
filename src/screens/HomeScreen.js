@@ -19,6 +19,7 @@ const HomeScreen = () => {
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     // Al montar, obtener publicaciones
@@ -30,6 +31,7 @@ const HomeScreen = () => {
     if (addStatus === 'succeeded') {
       setTitle('');
       setBody('');
+      setShowForm(false); // Ocultar el formulario después de publicar
       // Limpiar el error después de un tiempo
       setTimeout(() => {
         dispatch(clearError());
@@ -41,8 +43,8 @@ const HomeScreen = () => {
     // Validación
     if (!title.trim() || !body.trim()) {
       Alert.alert(
-        'Campos requeridos',
-        'Por favor completa el título y el contenido de la publicación.'
+        'Ocurrio un error',
+        'Debe completar todos los campos'
       );
       return;
     }
@@ -101,6 +103,18 @@ const HomeScreen = () => {
             <Text style={styles.cardBody}>{item.body}</Text>
           </View>
         )}
+
+        // ----------------------------------------------------
+        // AÑADE ESTAS DOS LÍNEAS PARA EL PULL-TO-REFRESH:
+        refreshing={isFetching} // 1. Muestra el spinner de recarga cuando isFetching es true
+        onRefresh={() => dispatch(fetchPosts())} // 2. Llama a la acción de recarga al arrastrar
+        // ----------------------------------------------------
+
+        ListHeaderComponent={
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Publicaciones</Text>
+          </View>
+        }
         ListEmptyComponent={
           !isFetching && (
             <View style={styles.emptyContainer}>
@@ -108,49 +122,78 @@ const HomeScreen = () => {
             </View>
           )
         }
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          !showForm && styles.listContentWithFab,
+        ]}
         style={styles.list}
       />
 
       {/* Formulario de nueva publicación */}
-      <View style={styles.form}>
-        <Text style={styles.formTitle}>Nueva publicación</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Título de la publicación"
-          placeholderTextColor="#999"
-          value={title}
-          onChangeText={setTitle}
-          editable={!isAdding}
-        />
-        <TextInput
-          style={[styles.input, styles.multiline]}
-          placeholder="Escriba un mensaje a publicar..."
-          placeholderTextColor="#999"
-          value={body}
-          onChangeText={setBody}
-          multiline
-          numberOfLines={4}
-          editable={!isAdding}
-        />
-        <TouchableOpacity
-          style={[
-            styles.button,
-            (!title.trim() || !body.trim() || isAdding) && styles.buttonDisabled,
-          ]}
-          onPress={handleAddPost}
-          disabled={!title.trim() || !body.trim() || isAdding}
-        >
-          {isAdding ? (
-            <>
-              <ActivityIndicator size="small" color="#FFFFFF" style={styles.buttonLoader} />
-              <Text style={styles.buttonText}>Publicando...</Text>
-            </>
-          ) : (
-            <Text style={styles.buttonText}>Publicar</Text>
-          )}
-        </TouchableOpacity>
-      </View>
+      {showForm && (
+        <View style={styles.form}>
+          <View style={styles.formHeader}>
+            <Text style={styles.formTitle}>Nueva publicación</Text>
+            <TouchableOpacity
+              onPress={() => {
+                setShowForm(false);
+                setTitle('');
+                setBody('');
+              }}
+              style={styles.closeButton}
+            >
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Título de la publicación"
+            placeholderTextColor="#999"
+            value={title}
+            onChangeText={setTitle}
+            editable={!isAdding}
+          />
+          <TextInput
+            style={[styles.input, styles.multiline]}
+            placeholder="Escriba un mensaje a publicar..."
+            placeholderTextColor="#999"
+            value={body}
+            onChangeText={setBody}
+            multiline
+            numberOfLines={4}
+            editable={!isAdding}
+          />
+          <TouchableOpacity
+            style={[
+              styles.button,
+              isAdding && styles.buttonDisabled,
+            ]}
+            onPress={handleAddPost}
+            disabled={isAdding}
+          >
+            {isAdding ? (
+              <>
+                <ActivityIndicator size="small" color="#FFFFFF" style={styles.buttonLoader} />
+                <Text style={styles.buttonText}>Publicando...</Text>
+              </>
+            ) : (
+              <Text style={styles.buttonText}>Publicar</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Botón flotante para nueva publicación */}
+      {!showForm && (
+        <View style={styles.fabContainer}>
+          <TouchableOpacity
+            style={styles.fabButton}
+            onPress={() => setShowForm(true)}
+          >
+            <Text style={styles.fabButtonText}>+   Nueva Publicación</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
@@ -158,14 +201,25 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFF3E0',
+    //backgroundColor: '#FFB74D',
     paddingTop: 50,
   },
   header: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
+    color: '#333',
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: '#333',
   },
   messageContainer: {
@@ -173,15 +227,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#FFF3E0',
     borderRadius: 8,
     marginHorizontal: 16,
     marginBottom: 16,
   },
   messageText: {
     marginLeft: 8,
-    color: '#1976D2',
-    fontSize: 14,
+    color: '#E65100',
+    fontSize: 15,
   },
   errorContainer: {
     backgroundColor: '#FFEBEE',
@@ -206,6 +260,9 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 16,
+  },
+  listContentWithFab: {
+    paddingBottom: 80, // Espacio adicional para el botón flotante
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -248,11 +305,29 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
   },
+  formHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   formTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 12,
     color: '#333',
+  },
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F0F0F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeButtonText: {
+    fontSize: 18,
+    color: '#666',
+    fontWeight: 'bold',
   },
   input: {
     borderWidth: 1,
@@ -269,7 +344,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#FF9800',
     borderRadius: 8,
     padding: 14,
     alignItems: 'center',
@@ -277,7 +352,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   buttonDisabled: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: '#FFB74D',
   },
   buttonText: {
     color: '#FFFFFF',
@@ -286,6 +361,33 @@ const styles = StyleSheet.create({
   },
   buttonLoader: {
     marginRight: 8,
+  },
+  fabContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fabButton: {
+    backgroundColor: '#FF9800',
+    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  fabButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
